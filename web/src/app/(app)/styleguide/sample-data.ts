@@ -36,6 +36,5 @@ export const CANDIDATES: SampleCandidate[] = [
   { id: "c1", name: "Maya Fernandes", job: "Backend Engineer", score: 86, status: "shortlisted", uploaded: "4 Nov 2026" },
   { id: "c2", name: "Daniel Okafor", job: "Backend Engineer", score: 71, status: "shortlisted", uploaded: "4 Nov 2026" },
   { id: "c3", name: "Lena Novak", job: "Product Designer", score: 52, status: "rejected", uploaded: "3 Nov 2026" },
-  { id: "c4", name: "Processing", job: "Data Engineer", score: null, status: "processing", uploaded: "3 Nov 2026" },
   { id: "c5", name: "Tomás Rivera", job: "QA Lead", score: null, status: "failed", uploaded: "2 Nov 2026" },
 ]

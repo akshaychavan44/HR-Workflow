@@ -1,6 +1,5 @@
 "use client"
 
-import { useId } from "react"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 
 export type JobResult = { job: string; shortlisted: number; rejected: number }
@@ -45,21 +44,14 @@ export function ChartLegend() {
   )
 }
 
-/** Per job: a solid ink bar for rejected with an orange-hatched bar stacked on top. */
+/** Per job: a solid ink bar for rejected with a solid accent bar stacked on top. */
 export function ResultsChart({ data, height = 220 }: { data: JobResult[]; height?: number }) {
-  const hatchId = `hatch-${useId().replace(/[^a-zA-Z0-9]/g, "")}`
   const summary = data.map((d) => `${d.job}: ${d.shortlisted} shortlisted, ${d.rejected} rejected`).join("; ")
 
   return (
     <div role="img" aria-label={`Shortlisted vs rejected per job. ${summary}`} style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 4, right: 0, bottom: 0, left: -24 }} barCategoryGap="16%">
-          <defs>
-            <pattern id={hatchId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-              <rect width="6" height="6" fill="var(--accent-orange)" fillOpacity={0.28} />
-              <rect width="3" height="6" fill="var(--accent-orange)" />
-            </pattern>
-          </defs>
           <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="2 4" />
           <XAxis
             dataKey="job"
@@ -81,7 +73,7 @@ export function ResultsChart({ data, height = 220 }: { data: JobResult[]; height
             content={ChartTooltip}
           />
           <Bar dataKey="rejected" stackId="a" fill="var(--text-primary)" stroke="var(--panel)" strokeWidth={2} radius={8} animationDuration={600} />
-          <Bar dataKey="shortlisted" stackId="a" fill={`url(#${hatchId})`} stroke="var(--panel)" strokeWidth={2} radius={8} animationDuration={600} />
+          <Bar dataKey="shortlisted" stackId="a" fill="var(--accent-orange)" stroke="var(--panel)" strokeWidth={2} radius={8} animationDuration={600} />
         </BarChart>
       </ResponsiveContainer>
     </div>

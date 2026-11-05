@@ -4,12 +4,10 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Check,
-  FileText,
   Filter,
   Plus,
   Search,
   Sparkles,
-  Star,
   Upload,
   UploadCloud,
   UserCheck,
@@ -26,6 +24,7 @@ import {
   CardTitle,
   ChartLegend,
   DataTable,
+  EmptyState,
   HatchedProgress,
   HeroCard,
   HeroPill,
@@ -53,6 +52,20 @@ import { Textarea } from "@/components/ui/textarea"
 
 import { CANDIDATES, CUTOFF, KEYWORDS, RESULTS, type SampleCandidate } from "./sample-data"
 
+const COLUMNS: Column<SampleCandidate>[] = [
+  { key: "name", header: "Candidate", cell: (c) => <span className="font-medium">{c.name}</span> },
+  { key: "job", header: "Job", cell: (c) => <span className="text-ink-secondary">{c.job}</span> },
+  { key: "score", header: "Score", cell: (c) => (c.score === null ? "—" : <ScoreBar score={c.score} cutoff={CUTOFF} />) },
+  { key: "status", header: "Status", cell: (c) => <StatusDot status={c.status} /> },
+  { key: "uploaded", header: "Uploaded", cell: (c) => <span className="text-ink-secondary">{c.uploaded}</span> },
+]
+
+const OPEN_JOBS = [
+  { title: "Backend Engineer", applicants: 48, shortlisted: 12, status: "open" as const },
+  { title: "Product Designer", applicants: 31, shortlisted: 9, status: "open" as const },
+  { title: "QA Lead", applicants: 22, shortlisted: 5, status: "closed" as const },
+]
+
 function Section({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
   return (
     <section className="space-y-4 pt-4">
@@ -65,16 +78,8 @@ function Section({ title, note, children }: { title: string; note?: string; chil
   )
 }
 
-const COLUMNS: Column<SampleCandidate>[] = [
-  { key: "name", header: "Candidate", cell: (c) => <span className="font-medium">{c.name}</span>, skeletonClassName: "w-32" },
-  { key: "job", header: "Job", cell: (c) => <span className="text-ink-secondary">{c.job}</span>, skeletonClassName: "w-28" },
-  { key: "score", header: "Score", cell: (c) => (c.score === null ? "—" : <ScoreBar score={c.score} cutoff={CUTOFF} />), skeletonClassName: "w-20" },
-  { key: "status", header: "Status", cell: (c) => <StatusDot status={c.status} />, skeletonClassName: "w-20" },
-  { key: "uploaded", header: "Uploaded", cell: (c) => <span className="text-ink-secondary">{c.uploaded}</span>, skeletonClassName: "w-28" },
-]
-
 export default function StyleguidePage() {
-  const [keywords, setKeywords] = useState(KEYWORDS)
+  const [keywords, setKeywords] = useState<Keyword[]>(KEYWORDS)
   const [tab, setTab] = useState<Keyword["kind"]>("must")
   const [filter, setFilter] = useState("all")
   const [cutoff, setCutoff] = useState(CUTOFF)
@@ -92,14 +97,25 @@ export default function StyleguidePage() {
     setNewKeyword("")
   }
 
+  const keywordTabs = (label: string) => (
+    <SegmentedControl
+      className="mt-4 self-start"
+      label={label}
+      value={tab}
+      onChange={setTab}
+      options={[
+        { value: "must", label: "Must-have" },
+        { value: "good", label: "Good-to-have" },
+      ]}
+    />
+  )
+
   return (
     <Stagger className="space-y-5 pb-8">
       <section className="space-y-4">
         <div className="grid gap-4 xl:grid-cols-[1fr_1.05fr_1fr]">
           <Card className="flex flex-col">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-[15px]">Screening summary</CardTitle>
-            </div>
+            <CardTitle className="text-[15px]">Screening summary</CardTitle>
             <AnimatedNumber value={1284} className="mt-2 block text-4xl font-semibold tracking-tight" />
             <TrendBadge className="mt-2" value="12" note="this week" />
             <div className="mt-5 grid grid-cols-2 gap-3">
@@ -115,11 +131,7 @@ export default function StyleguidePage() {
             <InnerPanel className="mt-5 flex-1">
               <p className="text-xs text-ink-secondary">Open jobs · Total 6</p>
               <div className="mt-3 grid grid-cols-3 gap-2">
-                {[
-                  { title: "Backend Engineer", applicants: 48, shortlisted: 12, status: "open" as const },
-                  { title: "Product Designer", applicants: 31, shortlisted: 9, status: "open" as const },
-                  { title: "QA Lead", applicants: 22, shortlisted: 5, status: "closed" as const },
-                ].map((job) => (
+                {OPEN_JOBS.map((job) => (
                   <div key={job.title} className="min-w-0 rounded-xl bg-surface p-2.5">
                     <p className="truncate text-xs font-medium">{job.title}</p>
                     <p className="mt-1.5 text-sm font-semibold tabular-nums">{job.applicants}</p>
@@ -133,7 +145,7 @@ export default function StyleguidePage() {
 
           <Card className="grid grid-cols-2 gap-3 p-4">
             <StatTile hero label="Shortlisted" value={42} icon={UserCheck} trend={<TrendBadge onHero value="7" note="this week" />} />
-            <StatTile label="Rejected" value={78} icon={UserX} trend={<TrendBadge direction="down" value="5" note="this week" />} />
+            <StatTile label="Rejected" value={72} icon={UserX} trend={<TrendBadge direction="down" value="5" note="this week" />} />
             <StatTile label="Total applicants" value={120} icon={Users} trend={<TrendBadge value="12" note="this week" />} />
             <StatTile label="Needs attention" value={6} icon={AlertTriangle} trend={<TrendBadge direction="down" value="2" note="this week" tone="success" />} />
           </Card>
@@ -153,14 +165,7 @@ export default function StyleguidePage() {
 
         <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
           <HeroCard className="min-h-[300px] justify-between">
-            <div className="flex items-center justify-between gap-3">
-              <HeroPill>
-                <Star aria-hidden />
-                Open
-              </HeroPill>
-              <span className="text-xs text-white/75">Created 12 Oct 2026</span>
-            </div>
-            <div className="mt-8">
+            <div>
               <div className="flex items-baseline gap-2">
                 <AnimatedNumber value={42} className="text-[44px] leading-none font-semibold tracking-tight sm:text-[64px]" />
                 <span className="text-sm text-white/85">shortlisted</span>
@@ -168,7 +173,7 @@ export default function StyleguidePage() {
               <HatchedProgress onHero value={42} max={120} marker={65} label="Shortlisted of total applicants" className="mt-5" />
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-white/85">
                 <span>Shortlisted</span>
-                <span>78 rejected · 6 processing</span>
+                <span>72 rejected · 6 processing</span>
               </div>
             </div>
             <div className="mt-6 flex items-center gap-4">
@@ -182,16 +187,7 @@ export default function StyleguidePage() {
 
           <Card className="flex flex-col">
             <CardTitle className="text-xl font-medium">Keywords</CardTitle>
-            <SegmentedControl
-              className="mt-4 self-start"
-              label="Keyword type"
-              value={tab}
-              onChange={setTab}
-              options={[
-                { value: "must", label: "Must-have" },
-                { value: "good", label: "Good-to-have" },
-              ]}
-            />
+            {keywordTabs("Keyword type")}
             <ul className="mt-4 flex-1 space-y-3">
               {visible.map((k) => (
                 <li key={k.id} className="flex items-center gap-2.5 text-sm">
@@ -207,17 +203,6 @@ export default function StyleguidePage() {
           </Card>
         </div>
       </section>
-
-      <Section title="Typography">
-        <Card lift={false} className="space-y-3">
-          <p className="text-[40px] leading-tight font-medium tracking-[-0.02em]">Page title 40/500</p>
-          <p className="text-sm text-ink-secondary">Page subtitle 14, secondary</p>
-          <p className="text-base font-medium">Card title 15–16/500</p>
-          <p className="text-4xl font-semibold tracking-tight">1,284 <span className="text-sm font-normal text-ink-muted">stat number 36/600</span></p>
-          <p className="text-[64px] leading-none font-semibold tracking-tight">42 <span className="text-sm font-normal tracking-normal text-ink-muted">hero number 64/600</span></p>
-          <p className="text-xs text-ink-muted">Label and meta 12–13</p>
-        </Card>
-      </Section>
 
       <Section title="Buttons, badges and status">
         <div className="grid gap-4 lg:grid-cols-2">
@@ -238,7 +223,6 @@ export default function StyleguidePage() {
               </PillButton>
               <HeroPill>Open</HeroPill>
               <HeroPill>Overridden by HR</HeroPill>
-              <TrendBadge onHero value="7%" note="this month" />
             </div>
             <div className="flex flex-wrap gap-3">
               <PillButton variant="secondary" onClick={() => toast("Job saved")}>
@@ -258,26 +242,12 @@ export default function StyleguidePage() {
                     <IconBadge icon={UploadCloud} className="size-11" />
                     <p className="text-sm text-ink-secondary">Drop files here, or browse</p>
                   </div>
-                  <ul className="space-y-2">
-                    <li className="flex items-center justify-between gap-3 rounded-xl bg-panel px-3 py-2.5 text-[13px]">
-                      <span className="flex min-w-0 items-center gap-2"><FileText className="size-4 shrink-0 text-ink-muted" strokeWidth={1.5} aria-hidden /><span className="truncate">resume-final.pdf</span></span>
-                      <span className="rounded-full bg-success-tint px-2 py-0.5 text-xs font-medium text-success">Accepted</span>
-                    </li>
-                    <li className="flex items-center justify-between gap-3 rounded-xl bg-panel px-3 py-2.5 text-[13px]">
-                      <span className="flex min-w-0 items-center gap-2"><FileText className="size-4 shrink-0 text-ink-muted" strokeWidth={1.5} aria-hidden /><span className="truncate">photo.heic</span></span>
-                      <span className="rounded-full bg-danger-tint px-2 py-0.5 text-xs font-medium text-danger">Invalid file</span>
-                    </li>
-                  </ul>
                 </DialogContent>
               </Dialog>
             </div>
           </Card>
 
           <Card lift={false} className="space-y-5">
-            <div className="flex flex-wrap items-center gap-4">
-              <TrendBadge value="7%" note="this week" />
-              <TrendBadge direction="down" value="5%" note="this week" />
-            </div>
             <div className="flex flex-wrap items-center gap-3">
               <IconBadge icon={UserCheck} />
               <IconBadge icon={Sparkles} />
@@ -311,8 +281,6 @@ export default function StyleguidePage() {
             <p className="text-[13px]">
               <span className="font-medium">42 shortlisted</span> <span className="text-ink-muted">out of 120</span>
             </p>
-            <p className="pt-3 text-xs text-ink-muted">With a cutoff marker at 65</p>
-            <HatchedProgress value={78} marker={65} label="Keyword score" />
           </Card>
           <Card lift={false} className="space-y-4">
             <CardTitle>Filter with counts</CardTitle>
@@ -363,16 +331,7 @@ export default function StyleguidePage() {
           </Card>
           <Card lift={false} className="flex flex-col">
             <CardTitle>Keywords</CardTitle>
-            <SegmentedControl
-              className="mt-4 self-start"
-              label="Keyword type for editing"
-              value={tab}
-              onChange={setTab}
-              options={[
-                { value: "must", label: "Must-have" },
-                { value: "good", label: "Good-to-have" },
-              ]}
-            />
+            {keywordTabs("Keyword type for editing")}
             <div className="mt-4 flex flex-1 flex-wrap content-start gap-2">
               {visible.map((k) => (
                 <KeywordChip
@@ -397,7 +356,7 @@ export default function StyleguidePage() {
         </div>
       </Section>
 
-      <Section title="Data table" note="A row still being processed shows a shimmer. Below 640px rows become stacked cards.">
+      <Section title="Data table">
         <Card lift={false}>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <CardTitle className="text-xl font-medium">Recent candidates</CardTitle>
@@ -418,17 +377,16 @@ export default function StyleguidePage() {
             columns={COLUMNS}
             rows={CANDIDATES}
             getRowId={(c) => c.id}
-            isRowLoading={(c) => c.status === "processing"}
             rowMenu={() => (
               <DropdownMenuItem>
                 <ArrowUpRight strokeWidth={1.5} aria-hidden />
                 Open profile
               </DropdownMenuItem>
             )}
+            empty={<EmptyState icon={Users} message="No candidates yet." />}
           />
         </Card>
       </Section>
-
     </Stagger>
   )
 }

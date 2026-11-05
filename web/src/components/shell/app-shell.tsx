@@ -121,7 +121,7 @@ function UserMenu({ onLogout }: { onLogout?: () => void }) {
         </span>
         <span className="hidden text-left leading-tight xl:block">
           <span className="block text-[13px] font-medium whitespace-nowrap text-ink">{name}</span>
-          <span className="block text-[11px] whitespace-nowrap text-ink-muted">{email}</span>
+          {email ? <span className="block text-[11px] whitespace-nowrap text-ink-muted">{email}</span> : null}
         </span>
         <ChevronDown className="hidden size-4 text-ink-muted lg:block" strokeWidth={1.5} aria-hidden />
       </PopoverTrigger>
