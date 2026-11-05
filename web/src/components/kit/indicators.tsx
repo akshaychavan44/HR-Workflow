@@ -211,7 +211,7 @@ export function HatchedProgress({
           data-slot="progress-marker"
           className={cn(
             "absolute -top-1 -bottom-1 w-0.5 -translate-x-1/2 rounded-full",
-            onHero ? "bg-white ring-2 ring-[#e8633a]" : "bg-ink ring-2 ring-surface"
+            onHero ? "bg-white ring-2 ring-orange" : "bg-ink ring-2 ring-surface"
           )}
           style={{ left: `${markerPct}%` }}
         />

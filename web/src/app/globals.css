@@ -75,6 +75,32 @@
   --border: #2e2e33;
 }
 
+/* Colour themes. Orange is the default above; each of these swaps the accent everywhere. */
+[data-accent="blue"] {
+  --accent-orange: #2f6fed;
+  --hero-gradient: linear-gradient(135deg, #5b93f5 0%, #1f55d6 100%);
+}
+[data-accent="emerald"] {
+  --accent-orange: #059669;
+  --hero-gradient: linear-gradient(135deg, #34c195 0%, #047857 100%);
+}
+[data-accent="violet"] {
+  --accent-orange: #7c3aed;
+  --hero-gradient: linear-gradient(135deg, #a07bf5 0%, #6425d6 100%);
+}
+[data-accent="rose"] {
+  --accent-orange: #e11d63;
+  --hero-gradient: linear-gradient(135deg, #f2628f 0%, #c81352 100%);
+}
+[data-accent]:not([data-accent="orange"]) {
+  --accent-tint: color-mix(in srgb, var(--accent-orange) 11%, white);
+  --accent-tint-text: color-mix(in srgb, var(--accent-orange) 82%, black);
+}
+.dark[data-accent]:not([data-accent="orange"]) {
+  --accent-tint: color-mix(in srgb, var(--accent-orange) 22%, #1e1e21);
+  --accent-tint-text: color-mix(in srgb, var(--accent-orange) 55%, white);
+}
+
 /* Re-declared per scope so a nested .dark/.light re-themes shadcn primitives. */
 :root,
 .light,

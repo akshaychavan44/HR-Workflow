@@ -1,6 +1,11 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "web", "runtimeExecutable": "pnpm", "runtimeArgs": ["--dir", "web", "dev"], "port": 3000 }
+    {
+      "name": "web",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "PATH=\"$HOME/.npm-global/bin:$PATH\" pnpm --dir web dev"],
+      "port": 3000
+    }
   ]
 }

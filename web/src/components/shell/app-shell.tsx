@@ -5,10 +5,10 @@ import {
   Bell,
   ChevronDown,
   CircleHelp,
-  LogOut,
   Menu,
   Moon,
   Search,
+  Settings,
   Sun,
   type LucideIcon,
 } from "lucide-react"
@@ -19,16 +19,12 @@ import { useState, useSyncExternalStore, type ComponentProps, type ReactNode } f
 import { cn } from "@/lib/utils"
 import { APP_INITIAL, APP_NAME, PLACEHOLDER_USER } from "@/lib/brand"
 import { pillSpring } from "@/lib/motion"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { DockGroup, DockItem } from "@/components/ui/dock-magnify"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { NAV_TABS, RAIL_ITEMS, isActive } from "./nav"
+import { SettingsPanel } from "./settings-panel"
 
 const pill = "rounded-full bg-surface shadow-[var(--card-shadow)]"
 const noSubscribe = () => () => {}
@@ -115,8 +111,8 @@ function UserMenu({ onLogout }: { onLogout?: () => void }) {
     .slice(0, 2)
     .join("")
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Popover>
+      <PopoverTrigger
         className={cn(pill, "inline-flex h-12 items-center gap-2.5 p-1.5 lg:pr-3.5")}
         aria-label={`Account menu for ${name}`}
       >
@@ -128,14 +124,11 @@ function UserMenu({ onLogout }: { onLogout?: () => void }) {
           <span className="block text-[11px] whitespace-nowrap text-ink-muted">{email}</span>
         </span>
         <ChevronDown className="hidden size-4 text-ink-muted lg:block" strokeWidth={1.5} aria-hidden />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuItem onSelect={onLogout}>
-          <LogOut strokeWidth={1.5} aria-hidden />
-          Log out
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={8} className="w-64">
+        <SettingsPanel onLogout={onLogout} />
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -242,16 +235,22 @@ function LeftRail({ onLogout }: { onLogout?: () => void }) {
             <CircleHelp className="size-4" strokeWidth={1.5} aria-hidden />
           </button>
         </RailButton>
-        <RailButton label="Log out">
-          <button
-            type="button"
-            aria-label="Log out"
-            onClick={onLogout}
-            className="inline-flex size-9 items-center justify-center rounded-full text-ink-secondary transition-colors hover:text-ink"
-          >
-            <LogOut className="size-4" strokeWidth={1.5} aria-hidden />
-          </button>
-        </RailButton>
+        <Popover>
+          <RailButton label="Settings">
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="Settings"
+                className="inline-flex size-9 items-center justify-center rounded-full text-ink-secondary transition-colors hover:text-ink"
+              >
+                <Settings className="size-4" strokeWidth={1.5} aria-hidden />
+              </button>
+            </PopoverTrigger>
+          </RailButton>
+          <PopoverContent side="right" align="end" sideOffset={12} className="w-64">
+            <SettingsPanel onLogout={onLogout} />
+          </PopoverContent>
+        </Popover>
         </DockGroup>
       </div>
     </aside>
@@ -306,10 +305,9 @@ function MobileMenu({ onLogout }: { onLogout?: () => void }) {
             <CircleHelp strokeWidth={1.5} aria-hidden />
             Help
           </button>
-          <button type="button" className={cn(row, "text-ink hover:bg-surface")} onClick={onLogout}>
-            <LogOut strokeWidth={1.5} aria-hidden />
-            Log out
-          </button>
+          <div className="mt-2 rounded-panel bg-surface p-4">
+            <SettingsPanel onLogout={onLogout} />
+          </div>
         </div>
       </SheetContent>
     </Sheet>

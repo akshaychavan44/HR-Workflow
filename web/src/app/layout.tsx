@@ -1,9 +1,11 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+import Script from "next/script"
 import type { ReactNode } from "react"
 
 import { Providers } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
+import { ACCENT_INIT_SCRIPT } from "@/lib/accents"
 import { APP_NAME } from "@/lib/brand"
 
 import "./globals.css"
@@ -19,6 +21,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className="min-h-dvh">
+        <Script id="accent-init" strategy="beforeInteractive">
+          {ACCENT_INIT_SCRIPT}
+        </Script>
         <Providers>
           {children}
           <Toaster position="bottom-center" />
