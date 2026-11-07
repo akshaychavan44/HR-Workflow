@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { saveJob } from "@/lib/jobs"
@@ -19,7 +20,7 @@ export default function JobSetupPage() {
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
   const savedId = useRef<string | null>(null)
   const [saveError, setSaveError] = useState("")
-  const [saving, setSaving] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
   const [keywords, setKeywords] = useState<Keyword[]>([])
   const [tab, setTab] = useState<Keyword["kind"]>("must")
   const [cutoff, setCutoff] = useState(DEFAULT_CUTOFF)
@@ -28,7 +29,7 @@ export default function JobSetupPage() {
   const visible = keywords.filter((k) => k.kind === tab)
 
   const handleSave = async () => {
-    if (saving) return
+    if (saveStatus !== "idle") return
     setSaveError("")
     const title = titleRef.current?.value.trim() ?? ""
     const description = descriptionRef.current?.value.trim() ?? ""
@@ -41,16 +42,18 @@ export default function JobSetupPage() {
       setSaveError("Click Add to include your last keyword before saving.")
       return
     }
-    setSaving(true)
+    setSaveStatus("saving")
     try {
       savedId.current ??= crypto.randomUUID()
       await saveJob({ id: savedId.current, title, description, cutoff, keywords, createdAt: new Date().toISOString() })
-      toast.success("Job saved")
-      router.push("/jobs")
     } catch {
       setSaveError("Could not save the job. Make sure the Python backend is running, then try again.")
-      setSaving(false)
+      setSaveStatus("idle")
+      return
     }
+    setSaveStatus("saved")
+    toast.success("Job saved")
+    router.push("/jobs")
   }
 
   const addKeyword = () => {
@@ -137,10 +140,16 @@ export default function JobSetupPage() {
         </div>
       </section>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <p role={saveError ? "alert" : undefined} className={saveError ? "text-sm text-destructive" : "text-xs text-ink-secondary"}>
-          {saveError || "Save this role to view its requirements under Jobs."}
+        <p role={saveError ? "alert" : "status"} className={saveError ? "text-sm text-destructive" : "text-xs text-ink-secondary"}>
+          {saveError || (saveStatus === "saved" ? "Job saved." : "Save this role to view its requirements under Jobs.")}
         </p>
-        <PillButton onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save Job"}</PillButton>
+        {saveStatus === "saved" ? (
+          <PillButton asChild><Link href="/jobs">View Jobs</Link></PillButton>
+        ) : (
+          <PillButton onClick={handleSave} disabled={saveStatus === "saving"}>
+            {saveStatus === "saving" ? "Saving…" : "Save Job"}
+          </PillButton>
+        )}
       </div>
     </Stagger>
   )

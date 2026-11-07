@@ -16,9 +16,11 @@ Run the two servers in separate terminals. Jobs are saved directly to Neon Postg
 
 Jobs, candidate profiles, and original CV bytes are stored in the Neon tables `hr_jobs` and `hr_candidates`.
 
-Choose a job, select PDF/DOCX files, then click Upload CVs. Uploads run one at a time and report individual failures. Exact duplicate files for the same job reuse the existing profile; the same CV can be uploaded for a different role.
+Install LibreOffice on every machine that runs the backend. On Windows, the default installation location works automatically. Set `SOFFICE_PATH` when LibreOffice is installed elsewhere. The backend converts Word, OpenDocument, Excel, and PowerPoint files to a temporary PDF before extracting text.
 
-The screening score is matched keyword weight divided by total keyword weight, rounded to 0–100. Must-have keywords have weight 5; optional keywords use their configured 1–5 weight. Matching ignores case and accepts configured synonyms. Missing must-have keywords prevent a meets-cutoff result. All results require HR review. Job descriptions and years of experience are not semantically evaluated. Name/contact extraction is heuristic. Scanned PDFs need OCR/manual review and are unscored. Password-protected and malformed files are rejected. Limit: 10 MB/file, 50 PDF pages, 30 MB expanded DOCX.
+Choose a job, select PDF, Word, OpenDocument, spreadsheet, or presentation files, then click Upload CVs. Supported extensions are PDF, DOC, DOCX, ODT, RTF, XLS, XLSX, ODS, PPT, PPTX, and ODP. Uploads run one at a time and report individual failures. Exact duplicate files for the same job reuse the existing profile; the same CV can be uploaded for a different role.
+
+The screening score is matched keyword weight divided by total keyword weight, rounded to 0–100. Must-have keywords have weight 5; optional keywords use their configured 1–5 weight. Matching ignores case and accepts configured synonyms. Missing must-have keywords prevent a meets-cutoff result. All results require HR review. Job descriptions and years of experience are not semantically evaluated. Name/contact extraction is heuristic. Scanned PDFs need OCR/manual review and are unscored. Password-protected and malformed files are rejected. Limit: 10 MB/file and 50 PDF pages after conversion.
 
 Tests: database integration tests require `TEST_DATABASE_URL` pointing to a dedicated, migrated Neon test database; without it they are skipped. Do not point tests at a database containing real records.
 

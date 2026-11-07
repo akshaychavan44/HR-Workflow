@@ -1,12 +1,15 @@
 import io
+import json
 import os
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 if os.environ.get("TEST_DATABASE_URL"):
     os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
 from fastapi.testclient import TestClient
 from docx import Document
 from pypdf import PdfWriter
-from app import app, screen
+from app import app, candidates, screen
 
 client = TestClient(app)
 job = {"id": "role", "title": "Developer", "description": "Build apps", "cutoff": 70, "createdAt": "2026-11-07",
@@ -43,6 +46,27 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(result["status"], "below_requirements")
         self.assertFalse(result["evidence"][0]["matched"])
         self.assertIsNone(screen("Experienced developer building application interfaces.", {**job, "keywords": []})["score"])
+
+    def test_evidence_shows_full_line_for_new_and_existing_matches(self):
+        role = {**job, "keywords": [{**job["keywords"][0], "label": "Frontend framework"}]}
+        before = "Built a customer portal and designed accessible, responsive interfaces using "
+        source = f"Technical skills\n{before}React.js and Tailwind CSS.\nOther experience"
+        result = screen(source, role)
+        line = {"before": before, "term": "React.js", "after": " and Tailwind CSS."}
+        self.assertEqual(result["score"], 100)
+        self.assertEqual(result["evidence"][0]["line"], line)
+
+        item = result["evidence"][0].copy()
+        del item["line"]
+        start = source.index("React.js")
+        item["snippet"] = source[start - 60:].strip()
+        profile = {"jobId": role["id"], "createdAt": role["createdAt"], "text": source, "evidence": [item]}
+        with patch("app.db") as database:
+            database.return_value.__enter__.return_value.scalars.side_effect = [
+                [json.dumps(profile)], [SimpleNamespace(id=role["id"], data=json.dumps(role))],
+            ]
+            profiles = candidates(job_id=role["id"])
+        self.assertEqual(profiles[0]["evidence"][0]["line"], line)
 
     @unittest.skipUnless(os.environ.get("TEST_DATABASE_URL"), "Requires a dedicated migrated Neon test database")
     def test_invalid_and_scanned_files(self):

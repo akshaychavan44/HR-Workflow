@@ -1,14 +1,16 @@
 import hashlib
 import io
 import json
+import os
 import re
+import shutil
+import subprocess
+import tempfile
 import uuid
-import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
-from docx import Document
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
@@ -18,6 +20,11 @@ from sqlalchemy.dialects.postgresql import insert
 from database import db, JobRecord, CandidateRecord
 
 app = FastAPI(title="HR Workflow")
+
+OFFICE_EXTENSIONS = {".doc", ".docx", ".odt", ".rtf", ".xls", ".xlsx", ".ods", ".ppt", ".pptx", ".odp"}
+SUPPORTED_EXTENSIONS = {".pdf", *OFFICE_EXTENSIONS}
+MAX_FILE_SIZE = 10 * 1024 * 1024
+MAX_PDF_PAGES = 50
 
 
 class Keyword(BaseModel):
@@ -71,19 +78,81 @@ def save_job(job: Job):
     return job
 
 
-def extract(content, extension):
-    if extension == ".pdf":
-        reader = PdfReader(io.BytesIO(content))
-        if reader.is_encrypted:
-            raise ValueError("Password-protected PDFs are not supported.")
-        if len(reader.pages) > 50:
-            raise ValueError("Use a CV with 50 pages or fewer.")
-        return "\n".join(page.extract_text() or "" for page in reader.pages)
-    with zipfile.ZipFile(io.BytesIO(content)) as archive:
-        if sum(item.file_size for item in archive.infolist()) > 30 * 1024 * 1024:
-            raise ValueError("This DOCX expands beyond the supported size.")
-    document = Document(io.BytesIO(content))
-    return "\n".join([p.text for p in document.paragraphs] + [cell.text for table in document.tables for row in table.rows for cell in row.cells])
+def soffice_command():
+    configured = os.environ.get("SOFFICE_PATH")
+    windows_default = Path(r"C:\Program Files\LibreOffice\program\soffice.exe")
+    command = configured or (str(windows_default) if windows_default.is_file() else shutil.which("soffice"))
+    if not command:
+        raise ValueError("LibreOffice is required for this file type. Install it on the backend server or set SOFFICE_PATH.")
+    return command
+
+
+def extract_pdf(content):
+    reader = PdfReader(io.BytesIO(content))
+    if reader.is_encrypted:
+        raise ValueError("Password-protected PDFs are not supported.")
+    if len(reader.pages) > MAX_PDF_PAGES:
+        raise ValueError(f"Use a CV with {MAX_PDF_PAGES} pages or fewer.")
+    return "\n".join(page.extract_text() or "" for page in reader.pages)
+
+
+def convert_to_pdf(content, filename):
+    with tempfile.TemporaryDirectory(prefix="hr-workflow-") as workspace:
+        folder = Path(workspace)
+        source = folder / filename
+        output = folder / "converted"
+        profile = folder / "profile"
+        output.mkdir()
+        source.write_bytes(content)
+        try:
+            subprocess.run(
+                [
+                    soffice_command(),
+                    "--headless",
+                    f"-env:UserInstallation={profile.as_uri()}",
+                    "--convert-to", "pdf",
+                    "--outdir", str(output),
+                    str(source),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise ValueError("Document conversion took too long. Try a smaller file.") from error
+        except subprocess.CalledProcessError as error:
+            detail = (error.stderr or error.stdout).strip()
+            raise ValueError(f"LibreOffice could not convert this file{f': {detail}' if detail else ''}.") from error
+        pdfs = list(output.glob("*.pdf"))
+        if len(pdfs) != 1:
+            raise ValueError("LibreOffice did not create a PDF for this file.")
+        return pdfs[0].read_bytes()
+
+
+def extract(content, filename, extension):
+    return extract_pdf(content if extension == ".pdf" else convert_to_pdf(content, filename))
+
+
+def find_keyword(text, label, synonyms):
+    for term in [label, *synonyms]:
+        if not term.strip():
+            continue
+        pattern = r"(?<!\w)" + r"\s+".join(re.escape(part) for part in term.strip().split()) + r"(?!\w)"
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            return match
+    return None
+
+
+def evidence_line(text, match):
+    start = text.rfind("\n", 0, match.start()) + 1
+    end = text.find("\n", match.end())
+    return {
+        "before": text[start:match.start()].lstrip(),
+        "term": match.group(),
+        "after": text[match.end():end if end != -1 else len(text)].rstrip(),
+    }
 
 
 def screen(text, job):
@@ -92,18 +161,11 @@ def screen(text, job):
     for keyword in job["keywords"]:
         weight = 5 if keyword["kind"] == "must" else keyword.get("weight") or 3
         total += weight
-        match = None
-        for term in [keyword["label"], *keyword["synonyms"]]:
-            if not term.strip():
-                continue
-            pattern = r"(?<!\w)" + r"\s+".join(re.escape(part) for part in term.strip().split()) + r"(?!\w)"
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                break
+        match = find_keyword(text, keyword["label"], keyword["synonyms"])
         if match:
             earned += weight
         evidence.append({"label": keyword["label"], "kind": keyword["kind"], "weight": weight,
-                         "matched": bool(match), "snippet": text[max(0, match.start()-60):match.end()+100].strip() if match else None})
+                         "matched": bool(match), "line": evidence_line(text, match) if match else None})
     score = round(earned / total * 100) if total and len(text.strip()) >= 30 else None
     missing = [item["label"] for item in evidence if not item["matched"]]
     missing_must = any(not item["matched"] and item["kind"] == "must" for item in evidence)
@@ -116,10 +178,10 @@ def upload(job_id: str, file: UploadFile):
     job = get_job(job_id)
     filename = Path((file.filename or "cv").replace("\\", "/")).name
     extension = Path(filename).suffix.lower()
-    if extension not in (".pdf", ".docx"):
-        raise HTTPException(400, "Choose a PDF or DOCX file.")
-    content = file.file.read(10 * 1024 * 1024 + 1)
-    if not content or len(content) > 10 * 1024 * 1024:
+    if extension not in SUPPORTED_EXTENSIONS:
+        raise HTTPException(400, "Choose a PDF, Word, spreadsheet, or presentation file.")
+    content = file.file.read(MAX_FILE_SIZE + 1)
+    if not content or len(content) > MAX_FILE_SIZE:
         raise HTTPException(400, "Each CV must be between 1 byte and 10 MB.")
     digest = hashlib.sha256(content).hexdigest()
     with db() as connection:
@@ -127,11 +189,11 @@ def upload(job_id: str, file: UploadFile):
     if previous:
         return {"candidate": json.loads(previous), "duplicate": True}
     try:
-        text = extract(content, extension)[:200000]
+        text = extract(content, filename, extension)[:200000]
     except ValueError as error:
         raise HTTPException(400, str(error)) from error
     except Exception as error:
-        raise HTTPException(400, "Could not read this file. Upload a valid, unencrypted PDF or DOCX.") from error
+        raise HTTPException(400, "Could not read this file. Upload a valid, unencrypted supported file.") from error
     emails = re.findall(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", text)
     phones = [m.group().strip() for m in re.finditer(r"(?<!\w)\+?\d[\d ()-]{7,}\d(?!\w)", text) if 10 <= len(re.sub(r"\D", "", m.group())) <= 15]
     lines = [line.strip() for line in text.splitlines() if line.strip()]
@@ -160,7 +222,23 @@ def candidates(job_id: str | None = None):
         query = select(CandidateRecord.data)
         if job_id:
             query = query.where(CandidateRecord.job_id == job_id)
-        return sorted([json.loads(data) for data in connection.scalars(query)], key=lambda candidate: candidate["createdAt"], reverse=True)
+        profiles = [json.loads(data) for data in connection.scalars(query)]
+        legacy = [(profile, item) for profile in profiles for item in profile["evidence"] if item.get("snippet")]
+        if legacy:
+            job_ids = {profile["jobId"] for profile, _ in legacy}
+            job_rows = connection.scalars(select(JobRecord).where(JobRecord.id.in_(job_ids)))
+            keywords = {
+                (row.id, keyword["kind"], keyword["label"]): keyword["synonyms"]
+                for row in job_rows for keyword in json.loads(row.data)["keywords"]
+            }
+            for profile, item in legacy:
+                source = profile["text"]
+                synonyms = keywords.get((profile["jobId"], item["kind"], item["label"]), [])
+                match = find_keyword(source, item["label"], synonyms)
+                # The saved excerpt verifies that the current keyword still points to the original match.
+                if match and source[max(0, match.start()-60):match.end()+100].strip() == item["snippet"]:
+                    item["line"] = evidence_line(source, match)
+    return sorted(profiles, key=lambda candidate: candidate["createdAt"], reverse=True)
 
 
 @app.get("/candidates/{candidate_id}/file")
