@@ -1,9 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Temporary: remove when the Overview page exists at `/`.
+  async rewrites() {
+    const backend = process.env.HR_BACKEND_URL || (process.env.NODE_ENV === "development" ? "http://127.0.0.1:8000" : "")
+    return backend ? [{ source: "/api/hr/:path*", destination: `${backend}/:path*` }] : []
+  },
   async redirects() {
-    return [{ source: "/", destination: "/styleguide", permanent: false }]
+    return [{ source: "/styleguide", destination: "/", permanent: true }]
   },
   cacheComponents: true,
   partialPrefetching: true,

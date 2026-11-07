@@ -10,6 +10,7 @@ import {
   Search,
   Settings,
   Sun,
+  User,
   type LucideIcon,
 } from "lucide-react"
 import { useTheme } from "next-themes"
@@ -17,7 +18,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState, useSyncExternalStore, type ComponentProps, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
-import { APP_INITIAL, APP_NAME, PLACEHOLDER_USER } from "@/lib/brand"
+import { APP_INITIAL, APP_NAME } from "@/lib/brand"
 import { pillSpring } from "@/lib/motion"
 import { DockGroup, DockItem } from "@/components/ui/dock-magnify"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -104,24 +105,17 @@ function CircleIconButton({
 }
 
 function UserMenu({ onLogout }: { onLogout?: () => void }) {
-  const { name, email } = PLACEHOLDER_USER
-  const initials = name
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
   return (
     <Popover>
       <PopoverTrigger
         className={cn(pill, "inline-flex h-12 items-center gap-2.5 p-1.5 lg:pr-3.5")}
-        aria-label={`Account menu for ${name}`}
+        aria-label="Account settings"
       >
         <span className="inline-flex size-9 items-center justify-center rounded-full bg-orange-tint text-[13px] font-semibold text-orange-tint-ink">
-          {initials}
+          <User className="size-4" strokeWidth={1.5} aria-hidden />
         </span>
         <span className="hidden text-left leading-tight xl:block">
-          <span className="block text-[13px] font-medium whitespace-nowrap text-ink">{name}</span>
-          {email ? <span className="block text-[11px] whitespace-nowrap text-ink-muted">{email}</span> : null}
+          <span className="block text-[13px] font-medium whitespace-nowrap text-ink">Account</span>
         </span>
         <ChevronDown className="hidden size-4 text-ink-muted lg:block" strokeWidth={1.5} aria-hidden />
       </PopoverTrigger>
@@ -328,7 +322,7 @@ export function AppShell({ children, onLogout }: { children: ReactNode; onLogout
             <div className={cn(pill, "hidden h-12 items-center gap-0.5 px-1.5 md:flex")}>
               <DockGroup className="gap-0.5">
                 <DockItem><CircleIconButton icon={Search} label="Search" /></DockItem>
-                <DockItem><CircleIconButton icon={Bell} label="Notifications" dot /></DockItem>
+                <DockItem><CircleIconButton icon={Bell} label="Notifications" /></DockItem>
                 <DockItem><CircleIconButton icon={CircleHelp} label="Help" /></DockItem>
               </DockGroup>
             </div>

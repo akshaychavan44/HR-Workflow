@@ -4,7 +4,7 @@
     {
       "name": "web",
       "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "PATH=\"$HOME/.npm-global/bin:$PATH\" pnpm --dir web dev"],
+      "runtimeArgs": ["-c", "pnpm --dir web dev"],
       "port": 3000
     }
   ]
